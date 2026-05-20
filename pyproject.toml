@@ -1,0 +1,99 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claude-trade-teams"
+version = "0.0.1"
+description = "Crypto perpetual trading system — Phase 0 infrastructure"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "aiosqlite>=0.20",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+# Optional: needed only to run scripts/bybit_testnet_smoke.py
+bybit = [
+    "pybit>=5.10.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trading"]
+
+# ============================================================
+# Ruff — lint + format
+# ============================================================
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # isort
+    "B",       # flake8-bugbear
+    "UP",      # pyupgrade
+    "N",       # pep8-naming
+    "C4",      # comprehensions
+    "SIM",     # simplify
+    "TCH",     # type-checking imports
+    "RUF",     # ruff-specific
+]
+ignore = [
+    "E501",    # line length handled by ruff format
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]              # asserts allowed in tests
+"**/__init__.py" = ["F401"]       # re-exports look unused to ruff
+# Sealed ADT pattern — abstract bases with no abstract methods is intentional
+"src/trading/domain/decision.py" = ["B024"]
+"src/trading/domain/submit_result.py" = ["B024"]
+
+# ============================================================
+# Mypy — strict
+# ============================================================
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "src"
+namespace_packages = true
+explicit_package_bases = true
+strict = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+# State machines: assertions about supervisor.state changing across
+# async calls trigger false comparison-overlap warnings (mypy doesn't
+# know property reads can differ between calls)
+strict_equality = false
+
+# pybit ships no type stubs (it's the optional [bybit] dependency, imported
+# lazily in BybitRest.create)
+[[tool.mypy.overrides]]
+module = "pybit.*"
+ignore_missing_imports = true
+
+# ============================================================
+# Pytest
+# ============================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "error",
+]
